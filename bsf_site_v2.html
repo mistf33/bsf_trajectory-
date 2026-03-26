@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BSF Factory — Thailand Site Analysis</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<style>
+:root {
+  --black:#0a0a0a; --white:#f5f2eb; --cream:#f0ead8; --ink:#1a1a1a;
+  --accent:#c8a84b; --accent2:#4b7c8a; --accent3:#7a5c8a;
+  --green:#3d6b4f; --red:#8a3d3d; --warm:#8a5d3d;
+  --border:rgba(200,168,75,.22); --b2:rgba(26,26,26,.09);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--cream);color:var(--ink);font-family:"DM Sans",sans-serif;font-size:14px;line-height:1.6;overflow-x:hidden}
+
+/* HERO */
+.hero{background:var(--black);color:var(--white);padding:80px 40px 60px;position:relative;overflow:hidden;min-height:340px;display:flex;align-items:flex-end}
+.hero::before{content:"";position:absolute;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 39px,rgba(200,168,75,.06) 39px,rgba(200,168,75,.06) 40px),repeating-linear-gradient(90deg,transparent,transparent 39px,rgba(200,168,75,.06) 39px,rgba(200,168,75,.06) 40px)}
+.hero-badge{display:inline-block;font-family:"DM Mono",monospace;font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--accent);border:1px solid rgba(200,168,75,.4);padding:4px 12px;margin-bottom:20px}
+.hero h1{font-family:"Syne",sans-serif;font-size:clamp(30px,5vw,60px);font-weight:800;line-height:1.0;letter-spacing:-.02em;max-width:780px}
+.hero h1 span{color:var(--accent)}
+.hero-sub{font-family:"DM Mono",monospace;font-size:12px;color:rgba(245,242,235,.45);margin-top:16px;letter-spacing:.08em}
+.hero-stats{position:absolute;right:40px;bottom:40px;display:flex;flex-direction:column;gap:14px;text-align:right}
+.hsv{font-family:"Syne",sans-serif;font-size:26px;font-weight:700;color:var(--accent)}
+.hsl{font-family:"DM Mono",monospace;font-size:10px;color:rgba(245,242,235,.4);letter-spacing:.1em;text-transform:uppercase}
+
+/* NAV */
+nav{background:var(--black);border-top:1px solid rgba(200,168,75,.18);padding:0 40px;display:flex;gap:0;position:sticky;top:0;z-index:200;overflow-x:auto}
+nav a{font-family:"DM Mono",monospace;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:rgba(245,242,235,.45);text-decoration:none;padding:14px 16px;border-bottom:2px solid transparent;white-space:nowrap;transition:all .2s}
+nav a:hover,nav a.active{color:var(--accent);border-bottom-color:var(--accent)}
+
+/* LAYOUT */
+.container{max-width:1200px;margin:0 auto;padding:0 40px}
+.section{padding:60px 0 48px;border-bottom:1px solid var(--b2)}
+.slabel{font-family:"DM Mono",monospace;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--accent);margin-bottom:10px}
+.stitle{font-family:"Syne",sans-serif;font-size:32px;font-weight:700;line-height:1.1;margin-bottom:8px}
+.sdesc{font-size:13px;color:rgba(26,26,26,.6);margin-bottom:32px;max-width:700px}
+
+/* METRICS */
+.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--b2);border:1px solid var(--b2);margin-bottom:32px}
+.metric{background:var(--cream);padding:24px 20px}
+.mval{font-family:"Syne",sans-serif;font-size:26px;font-weight:700}
+.mlbl{font-family:"DM Mono",monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:rgba(26,26,26,.4);margin-top:4px}
+.mnote{font-size:12px;color:rgba(26,26,26,.5);margin-top:5px}
+.c-amber{color:var(--accent)} .c-red{color:var(--red)} .c-green{color:var(--green)} .c-teal{color:var(--accent2)} .c-purple{color:var(--accent3)}
+
+/* ALERTS */
+.alert{padding:14px 18px;margin-bottom:20px;font-size:13px;border-left:3px solid;display:flex;gap:10px}
+.alert-warn{background:rgba(138,93,61,.07);border-color:var(--warm)}
+.alert-ok{background:rgba(61,107,79,.07);border-color:var(--green)}
+.alert-info{background:rgba(75,124,138,.07);border-color:var(--accent2)}
+.ai{font-size:15px;flex-shrink:0;margin-top:1px}
+
+/* PHASE TABS */
+.ptabs{display:flex;gap:0;border-bottom:2px solid var(--b2);margin-bottom:28px}
+.ptab{font-family:"DM Mono",monospace;font-size:11px;letter-spacing:.1em;text-transform:uppercase;padding:12px 20px;cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;color:rgba(26,26,26,.4);transition:all .2s}
+.ptab.active{color:var(--ink);border-bottom-color:var(--accent)}
+.ptab:hover{color:var(--ink)}
+.ppanel{display:none}
+.ppanel.active{display:block}
+
+/* ZONE CARDS */
+.zones-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.zone-card{background:#fff;border:1px solid var(--b2);padding:24px;position:relative;transition:box-shadow .2s;overflow:hidden}
+.zone-card:hover{box-shadow:0 6px 28px rgba(0,0,0,.08)}
+.zone-letter{position:absolute;top:16px;right:20px;font-family:"Syne",sans-serif;font-size:56px;font-weight:800;color:rgba(26,26,26,.05);line-height:1}
+.ztag{font-family:"DM Mono",monospace;font-size:10px;letter-spacing:.12em;text-transform:uppercase;padding:3px 10px;display:inline-block;margin-bottom:10px}
+.tp1{background:rgba(75,124,138,.1);color:var(--accent2)}
+.tp2{background:rgba(61,107,79,.1);color:var(--green)}
+.tp3{background:rgba(138,93,61,.1);color:var(--warm)}
+.ztitle{font-family:"Syne",sans-serif;font-size:15px;font-weight:700;margin-bottom:4px}
+.zgeo{font-family:"DM Mono",monospace;font-size:11px;color:rgba(26,26,26,.45);margin-bottom:8px}
+.zbody{font-size:12px;color:rgba(26,26,26,.65);margin-bottom:12px;line-height:1.65}
+.zprod{font-size:12px;color:rgba(26,26,26,.55);margin-bottom:12px;padding:10px 12px;background:rgba(26,26,26,.03);border-left:2px solid var(--b2)}
+.zprod strong{color:var(--ink);font-weight:500}
+.zmeta{display:flex;gap:16px;flex-wrap:wrap;border-top:1px solid var(--b2);padding-top:12px}
+.zk{font-family:"DM Mono",monospace;font-size:9px;text-transform:uppercase;letter-spacing:.1em;color:rgba(26,26,26,.38)}
+.zv{font-family:"Syne",sans-serif;font-size:15px;font-weight:700}
+.zbadge{display:inline-block;font-family:"DM Mono",monospace;font-size:10px;padding:2px 8px;margin-top:6px}
+.bprog{background:rgba(61,107,79,.1);color:var(--green)}
+.bwarn{background:rgba(200,168,75,.15);color:#7a6020}
+.bfeas{background:rgba(138,93,61,.1);color:var(--warm)}
+
+/* BAR */
+.bar-section{margin-bottom:36px}
+.bar-hdr{font-family:"DM Mono",monospace;font-size:10px;text-transform:uppercase;letter-spacing:.12em;color:rgba(26,26,26,.38);margin-bottom:14px;display:flex;justify-content:space-between}
+.bar-row{display:flex;align-items:center;gap:10px;margin-bottom:8px;font-size:13px}
+.bar-name{width:200px;flex-shrink:0;font-size:12px}
+.bar-track{flex:1;height:20px;background:rgba(26,26,26,.06);position:relative;overflow:hidden}
+.bar-fill{height:100%;display:flex;align-items:center;padding-left:8px;font-family:"DM Mono",monospace;font-size:10px;color:rgba(255,255,255,.8);transition:width 1.2s cubic-bezier(.4,0,.2,1);white-space:nowrap}
+.bar-val{width:95px;text-align:right;font-family:"DM Mono",monospace;font-size:11px;flex-shrink:0}
+.gbadge{font-family:"DM Mono",monospace;font-size:9px;padding:1px 7px;letter-spacing:.06em}
+.gok{background:rgba(61,107,79,.12);color:var(--green)}
+.gwarn{background:rgba(200,168,75,.15);color:#7a6020}
+.gmiss{background:rgba(138,61,61,.1);color:var(--red)}
+
+/* CAPEX */
+.capex-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px}
+.cc{border:1px solid var(--b2);background:#fff;padding:22px 18px;position:relative;overflow:hidden}
+.cc.feat{border-color:var(--accent);background:rgba(200,168,75,.03)}
+.cc.feat::before{content:"ЦЕЛЬ";position:absolute;top:0;right:0;background:var(--accent);color:var(--black);font-family:"DM Mono",monospace;font-size:9px;letter-spacing:.1em;padding:3px 10px}
+.cc-name{font-family:"DM Mono",monospace;font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:rgba(26,26,26,.4);margin-bottom:8px}
+.cc-val{font-family:"Syne",sans-serif;font-size:22px;font-weight:700;margin-bottom:2px}
+.cc-sub{font-size:12px;color:rgba(26,26,26,.45);margin-bottom:14px}
+.cc-rows{border-top:1px solid var(--b2);padding-top:12px}
+.cc-row{display:flex;justify-content:space-between;font-size:12px;padding:3px 0;border-bottom:1px solid rgba(26,26,26,.04)}
+.cc-rk{color:rgba(26,26,26,.5)}
+.cc-rv{font-weight:500;font-family:"DM Mono",monospace;font-size:11px}
+
+/* BUYERS */
+.buyers{display:flex;flex-direction:column;gap:10px}
+.bc{background:#fff;border:1px solid var(--b2);display:grid;grid-template-columns:44px 1fr auto;align-items:start;transition:box-shadow .2s}
+.bc:hover{box-shadow:0 4px 20px rgba(0,0,0,.07)}
+.bc-rank{font-family:"Syne",sans-serif;font-size:20px;font-weight:800;color:rgba(26,26,26,.1);padding:18px 0 18px 18px;align-self:center}
+.bc-body{padding:18px 18px 18px 10px}
+.bc-company{font-family:"Syne",sans-serif;font-size:14px;font-weight:700;margin-bottom:3px}
+.bc-loc{font-family:"DM Mono",monospace;font-size:10px;color:rgba(26,26,26,.4);letter-spacing:.07em;margin-bottom:7px}
+.bc-desc{font-size:12px;color:rgba(26,26,26,.6);margin-bottom:8px;line-height:1.6}
+.bc-tags{display:flex;gap:5px;flex-wrap:wrap}
+.btag{font-family:"DM Mono",monospace;font-size:10px;padding:2px 7px;border:1px solid}
+.t-shrimp{border-color:var(--accent2);color:var(--accent2)}
+.t-tilapia{border-color:var(--green);color:var(--green)}
+.t-bsf{border-color:var(--accent);color:#7a6020;background:rgba(200,168,75,.08)}
+.t-esg{border-color:var(--accent3);color:var(--accent3)}
+.bc-right{padding:18px;text-align:right;border-left:1px solid var(--b2);min-width:130px;align-self:stretch;display:flex;flex-direction:column;justify-content:center;gap:6px}
+.bdr-val{font-family:"Syne",sans-serif;font-size:17px;font-weight:700}
+.bdr-lbl{font-family:"DM Mono",monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:rgba(26,26,26,.38)}
+.bdr-dist{font-family:"DM Mono",monospace;font-size:10px;color:rgba(26,26,26,.4)}
+.sdot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:4px}
+.dot-hot{background:var(--green)} .dot-mid{background:var(--accent)} .dot-cold{background:rgba(26,26,26,.2)}
+
+/* FRASS */
+.frass-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+.fc{background:#fff;border:1px solid var(--b2);padding:20px}
+.fc-icon{font-size:22px;margin-bottom:8px}
+.fc-title{font-family:"Syne",sans-serif;font-size:14px;font-weight:700;margin-bottom:3px}
+.fc-crop{font-family:"DM Mono",monospace;font-size:10px;color:rgba(26,26,26,.4);letter-spacing:.07em;margin-bottom:8px}
+.fc-body{font-size:12px;color:rgba(26,26,26,.6);margin-bottom:12px;line-height:1.6}
+.fc-btm{display:flex;justify-content:space-between;align-items:flex-end;border-top:1px solid var(--b2);padding-top:10px}
+.fc-vol{font-family:"Syne",sans-serif;font-size:15px;font-weight:700}
+.fc-price{font-family:"DM Mono",monospace;font-size:11px;color:var(--green)}
+
+/* MAP */
+#map-section{padding:60px 0;border-bottom:1px solid var(--b2)}
+#map{width:100%;height:560px;border:1px solid var(--b2)}
+.map-legend{display:flex;flex-wrap:wrap;gap:16px;margin-top:14px;font-family:"DM Mono",monospace;font-size:11px;color:rgba(26,26,26,.6)}
+.ml-item{display:flex;align-items:center;gap:6px}
+.ml-dot{width:12px;height:12px;border-radius:50%;flex-shrink:0}
+.map-tabs{display:flex;gap:6px;margin-bottom:14px}
+.map-tab{font-family:"DM Mono",monospace;font-size:11px;letter-spacing:.09em;text-transform:uppercase;padding:8px 16px;cursor:pointer;border:1px solid var(--b2);background:#fff;color:rgba(26,26,26,.5);transition:all .2s}
+.map-tab.active{background:var(--black);color:var(--accent);border-color:var(--black)}
+
+/* LOCATION */
+.loc-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+.lc{background:#fff;border:1px solid var(--b2);padding:24px}
+.lc.feat{border-color:var(--green)}
+.lc-badge{font-family:"DM Mono",monospace;font-size:10px;text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px;padding:3px 10px;display:inline-block}
+.lc-title{font-family:"Syne",sans-serif;font-size:18px;font-weight:700;margin-bottom:10px}
+.lc-body{font-size:12px;color:rgba(26,26,26,.6);line-height:1.75}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+
+/* FOOTER */
+footer{background:var(--black);color:rgba(245,242,235,.35);padding:40px;font-family:"DM Mono",monospace;font-size:11px;letter-spacing:.06em;display:flex;justify-content:space-between;align-items:center;margin-top:80px;flex-wrap:wrap;gap:12px}
+footer span{color:var(--accent)}
+
+@keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+.fu{opacity:0;animation:fadeUp .6s ease forwards}
+.d1{animation-delay:.1s}.d2{animation-delay:.2s}.d3{animation-delay:.3s}
+
+@media(max-width:960px){
+  .zones-grid,.capex-grid,.frass-grid,.loc-grid{grid-template-columns:1fr}
+  .metrics{grid-template-columns:1fr 1fr}
+  .hero-stats{display:none}
+  .two-col{grid-template-columns:1fr}
+  .bc{grid-template-columns:1fr}
+  .bc-right{border-left:none;border-top:1px solid var(--b2)}
+}
+</style>
+</head>
+<body>
+
+<!-- HERO -->
+<div class="hero">
+  <div style="position:relative;z-index:1">
+    <div class="hero-badge">BSF Farm · Thailand · Site Analysis 2025</div>
+    <h1>Black Soldier Fly<br><span>Factory Strategy</span><br>Central Thailand</h1>
+    <div class="hero-sub">Radius 300 km · Nakhon Pathom core · 8 waste zones · Waste-to-Protein · Aquafeed</div>
+  </div>
+  <div class="hero-stats">
+    <div><div class="hsv">530 000</div><div class="hsl">т/год органики (all zones)</div></div>
+    <div><div class="hsv">~24 000</div><div class="hsl">т/год BSF-муки</div></div>
+    <div><div class="hsv">$65.7M</div><div class="hsl">Capex оборудование</div></div>
+  </div>
+</div>
+
+<!-- NAV -->
+<nav id="main-nav">
+  <a href="#overview">Обзор</a>
+  <a href="#map-section">Карта</a>
+  <a href="#waste">Сырьё</a>
+  <a href="#capex">Capex</a>
+  <a href="#buyers-meal">BSF-мука</a>
+  <a href="#buyers-frass">Frass</a>
+  <a href="#location">Локация</a>
+</nav>
+
+<!-- OVERVIEW -->
+<section id="overview" class="section">
+<div class="container">
+  <div class="slabel">01 / Обзор</div>
+  <div class="stitle">Ключевые параметры проекта</div>
+  <div class="sdesc">BSF-ферма перерабатывает органические отходы в белковую муку для аквакорма и frass-удобрение. Центр — Nakhon Pathom, охват 300 км.</div>
+
+  <div class="metrics fu d1">
+    <div class="metric"><div class="mval c-amber">240k т</div><div class="mlbl">Сырьё Фаза 1</div><div class="mnote">Зоны A–D определены</div></div>
+    <div class="metric"><div class="mval c-red">444k т</div><div class="mlbl">Нужно для цели</div><div class="mnote">Конверсия 4.5%; зоны E–H</div></div>
+    <div class="metric"><div class="mval c-green">~21 700 т</div><div class="mlbl">Аква спрос (300 км)</div><div class="mnote">TFM + CPF + Betagro + фермы</div></div>
+    <div class="metric"><div class="mval c-teal">$2 300/т</div><div class="mlbl">Цена BSF-муки</div><div class="mnote">vs fishmeal $1 100–1 300</div></div>
+  </div>
+
+  <div class="alert alert-warn fu d2"><div class="ai">⚠</div><div><strong>Главный gap:</strong> Текущий объём 240k т → лишь ~11k т муки (55% цели). Для 20k т муки нужно 444k т органики. Критический путь: заключить контракты на зоны E (соя, +80k т) и F (фрукты, +60k т).</div></div>
+  <div class="alert alert-ok fu d3"><div class="ai">✓</div><div><strong>Рынок сбыта закрыт:</strong> TFM + CPF + INTEQC дают реалистичный спрос 17–25k т/год BSF-муки. Первый якорный покупатель — TFM Mahachai (70 км, готов к тесту в 2025).</div></div>
+  <div class="alert alert-info fu d3"><div class="ai">ℹ</div><div><strong>Модель:</strong> Цена BSF-муки $2 300/т · Frass $60/т · Capex $450k / каждые 10 т/сут · Конверсия 4.5% (сырьё → сухая мука)</div></div>
+</div>
+</section>
+
+<!-- MAP -->
+<section id="map-section">
+<div class="container">
+  <div class="slabel" style="padding-top:60px">02 / Карта</div>
+  <div class="stitle">Интерактивная карта — зоны + покупатели</div>
+  <div class="sdesc">Переключайте слои: зоны сырья, аквафид-заводы (BSF-мука), frass-потребители и тепловая карта концентрации отходов.</div>
+
+  <div class="map-tabs">
+    <div class="map-tab active" onclick="showLayer('waste')">Зоны сырья</div>
+    <div class="map-tab" onclick="showLayer('buyers')">Покупатели муки</div>
+    <div class="map-tab" onclick="showLayer('frass')">Frass-потребители</div>
+    <div class="map-tab" onclick="showLayer('heat')">Тепловая карта</div>
+    <div class="map-tab" onclick="showLayer('all')">Все слои</div>
+  </div>
+
+  <div id="map"></div>
+
+  <div class="map-legend">
+    <div class="ml-item"><div class="ml-dot" style="background:#4b7c8a"></div>Зоны сырья Фаза 1</div>
+    <div class="ml-item"><div class="ml-dot" style="background:#3d6b4f"></div>Зоны сырья Фаза 2</div>
+    <div class="ml-item"><div class="ml-dot" style="background:#8a5d3d"></div>Зоны сырья Фаза 3</div>
+    <div class="ml-item"><div class="ml-dot" style="background:#c8a84b"></div>BSF-завод (центр)</div>
+    <div class="ml-item"><div class="ml-dot" style="background:#1a1a1a"></div>Аквафид-покупатели</div>
+    <div class="ml-item"><div class="ml-dot" style="background:#3d6b4f;opacity:.6"></div>Frass-потребители</div>
+  </div>
+</div>
+</section>
+
+<!-- WASTE -->
+<section id="waste" class="section">
+<div class="container">
+  <div class="slabel">03 / Сырьевая база</div>
+  <div class="stitle">8 зон органических отходов</div>
+  <div class="sdesc">Полная карта сырьевых зон по трём фазам. Общий потенциал 530 000 т/год в радиусе 300 км от Nakhon Pathom.</div>
+
+  <div class="bar-section fu">
+    <div class="bar-hdr"><span>Зона / тип</span><span>т/год</span></div>
+    <div class="bar-row"><div class="bar-name"><strong>A</strong> BSG + крахмал</div><div class="bar-track"><div class="bar-fill bfa" data-w="22.6" style="background:#4b7c8a;width:0%">120 000</div></div><div class="bar-val">120 000 <span class="gbadge gok">Ф1</span></div></div>
+    <div class="bar-row"><div class="bar-name"><strong>B</strong> BSG + кассава</div><div class="bar-track"><div class="bar-fill bfa" data-w="11.3" style="background:#4b7c8a;width:0%">60 000</div></div><div class="bar-val">60 000 <span class="gbadge gok">Ф1</span></div></div>
+    <div class="bar-row"><div class="bar-name"><strong>C</strong> Молочка + сахар</div><div class="bar-track"><div class="bar-fill bfa" data-w="7.5" style="background:#4b7c8a;width:0%">40 000</div></div><div class="bar-val">40 000 <span class="gbadge gok">Ф1</span></div></div>
+    <div class="bar-row"><div class="bar-name"><strong>D</strong> Food by-products</div><div class="bar-track"><div class="bar-fill bfa" data-w="3.8" style="background:#4b7c8a;width:0%">20 000</div></div><div class="bar-val">20 000 <span class="gbadge gok">Ф1</span></div></div>
+    <div class="bar-row"><div class="bar-name"><strong>E</strong> Соевая шелуха</div><div class="bar-track"><div class="bar-fill bfa" data-w="15.1" style="background:#3d6b4f;width:0%">80 000</div></div><div class="bar-val">80 000 <span class="gbadge gwarn">Ф2</span></div></div>
+    <div class="bar-row"><div class="bar-name"><strong>F</strong> Фрукты / овощи</div><div class="bar-track"><div class="bar-fill bfa" data-w="11.3" style="background:#3d6b4f;width:0%">60 000</div></div><div class="bar-val">60 000 <span class="gbadge gwarn">Ф2</span></div></div>
+    <div class="bar-row"><div class="bar-name"><strong>G</strong> Пищепром / dairy</div><div class="bar-track"><div class="bar-fill bfa" data-w="9.4" style="background:#8a5d3d;width:0%">50 000</div></div><div class="bar-val">50 000 <span class="gbadge gmiss">Ф3</span></div></div>
+    <div class="bar-row"><div class="bar-name"><strong>H</strong> Кассава расш.</div><div class="bar-track"><div class="bar-fill bfa" data-w="18.9" style="background:#8a5d3d;width:0%">100 000</div></div><div class="bar-val">100 000 <span class="gbadge gmiss">Ф3</span></div></div>
+    <div style="border-top:2px solid var(--b2);margin:12px 0 8px"></div>
+    <div class="bar-row" style="font-weight:600"><div class="bar-name">ИТОГО A–H</div><div class="bar-track"><div class="bar-fill bfa" data-w="100" style="background:#0a0a0a;width:0%">530 000 т</div></div><div class="bar-val" style="color:var(--green);font-weight:700">530 000 ✓</div></div>
+  </div>
+
+  <!-- PHASE TABS -->
+  <div class="ptabs">
+    <div class="ptab active" onclick="showPhase('p1')">Фаза 1 — текущие (A–D)</div>
+    <div class="ptab" onclick="showPhase('p2')">Фаза 2 — добавить (E–F)</div>
+    <div class="ptab" onclick="showPhase('p3')">Фаза 3 — масштаб (G–H)</div>
+  </div>
+
+  <!-- PHASE 1 -->
+  <div class="ppanel active" id="p1">
+    <div class="alert alert-ok" style="margin-bottom:20px"><div class="ai">✓</div><div><strong>Фаза 1 — 240k т/год.</strong> Якорные производители отходов идентифицированы, начальные переговоры возможны немедленно. Capex: ~$29 590k оборудование.</div></div>
+    <div class="zones-grid">
+      <div class="zone-card"><div class="zone-letter">A</div><div class="ztag tp1">Фаза 1 — действующая</div><div class="ztitle">BSG + дистиллят + крахмал</div><div class="zgeo">Bang Len / Sam Phran / Mueang · Nakhon Pathom · 0–20 км</div><div class="zbody">Ядро локации. Три потока в одном коридоре — пивная дробина от Singha, дистиллятный остаток от Thai Alcohol, крахмальная пульпа от Sino-Thai Starch. Высокое содержание белка, постоянный поток 365 дней в году.</div><div class="zprod"><strong>Якорные производители:</strong> Singha Beverage (BSG крупнейший пивзавод Таиланда); Thai Alcohol Co. (этанол / дистиллят); Sino-Thai Starch Co. (кукурузный крахмал)</div><div class="zmeta"><div><div class="zk">Объём</div><div class="zv c-teal">120 000 т</div></div><div><div class="zk">т/сут</div><div class="zv">329</div></div><div><div class="zk">Capex</div><div class="zv">$14 795k</div></div><div><div class="zk">BSF мука</div><div class="zv">5 400 т</div></div></div><div><span class="zbadge bprog">Действующая</span></div></div>
+      <div class="zone-card"><div class="zone-letter">B</div><div class="ztag tp1">Фаза 1 — действующая</div><div class="ztitle">BSG + кассава пульпа</div><div class="zgeo">Nonthaburi → Suphan Buri · NW-коридор · 40–80 км</div><div class="zbody">Второй BSG-поток от TAPB Brewery (Bang Yai) плюс кассавная пульпа из Suphan Buri — одного из крупнейших кассава-регионов Таиланда. Высокая влажность субстрата — оптимальна для BSF.</div><div class="zprod"><strong>Якорные производители:</strong> TAPB Brewery (Thai Asia Pacific Brewery); зона кассавных заводов Suphan Buri (Sino-Thai + локальные)</div><div class="zmeta"><div><div class="zk">Объём</div><div class="zv c-teal">60 000 т</div></div><div><div class="zk">т/сут</div><div class="zv">164</div></div><div><div class="zk">Capex</div><div class="zv">$7 397k</div></div><div><div class="zk">BSF мука</div><div class="zv">2 700 т</div></div></div><div><span class="zbadge bprog">Действующая</span></div></div>
+      <div class="zone-card"><div class="zone-letter">C</div><div class="ztag tp1">Фаза 1 — действующая</div><div class="ztitle">Молочные стоки + сахарный фильтр-кек</div><div class="zgeo">Ratchaburi → Kanchanaburi · W-коридор · 60–110 км</div><div class="zbody">Nongpho Ratchaburi Dairy Coop — крупнейший молочный кооператив Таиланда (~800k л/сут молока). Возвраты, сыворотка, промывные воды. Thai Sugar Mill даёт filter cake — богатый сахарами и клетчаткой субстрат.</div><div class="zprod"><strong>Якорные производители:</strong> Nongpho Ratchaburi Dairy Cooperative; Thai Sugar Mill (Ratchaburi); малые сахарные заводы Kanchanaburi</div><div class="zmeta"><div><div class="zk">Объём</div><div class="zv c-teal">40 000 т</div></div><div><div class="zk">т/сут</div><div class="zv">110</div></div><div><div class="zk">Capex</div><div class="zv">$4 932k</div></div><div><div class="zk">BSF мука</div><div class="zv">1 800 т</div></div></div><div><span class="zbadge bprog">Действующая</span></div></div>
+      <div class="zone-card"><div class="zone-letter">D</div><div class="ztag tp1">Фаза 1 — опциональная</div><div class="ztitle">Food by-products / сезонные бустеры</div><div class="zgeo">Chachoengsao / Bang Pakong · E-буфер · 130–160 км</div><div class="zbody">Пищевая промзона восточного Бангкока. Буферная зона для пиковых нагрузок — сезонные всплески от фруктопереработки, замороженных продуктов. Высокая конкуренция за отходы от других переработчиков.</div><div class="zprod"><strong>Якорные производители:</strong> Пищевые заводы восток Бангкока (фруктопереработка, заморозка); логистические DC с пищевыми возвратами</div><div class="zmeta"><div><div class="zk">Объём</div><div class="zv c-teal">20 000 т</div></div><div><div class="zk">т/сут</div><div class="zv">55</div></div><div><div class="zk">Capex</div><div class="zv">$2 466k</div></div><div><div class="zk">BSF мука</div><div class="zv">900 т</div></div></div><div><span class="zbadge bprog">Действующая</span></div></div>
+    </div>
+  </div>
+
+  <!-- PHASE 2 -->
+  <div class="ppanel" id="p2">
+    <div class="alert alert-warn" style="margin-bottom:20px"><div class="ai">⚠</div><div><strong>Фаза 2 — +140k т/год.</strong> Критический путь к цели 20k т муки. Нужно заключить контракты на переработку с TVO (соя) и оптовыми рынками Бангкока. Capex доп.: ~$17 260k.</div></div>
+    <div class="zones-grid">
+      <div class="zone-card"><div class="zone-letter">E</div><div class="ztag tp2">Фаза 2 — добавить</div><div class="ztitle">Соевая шелуха / окара</div><div class="zgeo">Samut Prakan / Bangkok · Соя-хаб · 30–50 км</div><div class="zbody">Таиланд — крупнейший соевый дробильщик ЮВА. Четыре активных завода (TVO, TVOP, Porn Amnuay Sup, Industrial Enterprise) дробят 2.43 млн т/год. Шелуха и окара — побочные потоки с минимальной монетизацией. Высокий белок (18–25%), стабильный ежедневный поток.</div><div class="zprod"><strong>Якорные производители:</strong> TVO (Thai Vegetable Oil) — 4 завода; TVOP (Thanakorn Vegetable Oil); Porn Amnuay Sup; Industrial Enterprise Co. Все в радиусе 30–50 км.</div><div class="zmeta"><div><div class="zk">Объём</div><div class="zv c-green">80 000 т</div></div><div><div class="zk">т/сут</div><div class="zv">219</div></div><div><div class="zk">Capex</div><div class="zv">$9 863k</div></div><div><div class="zk">BSF мука</div><div class="zv">3 600 т</div></div></div><div><span class="zbadge bwarn">Переговоры</span></div></div>
+      <div class="zone-card"><div class="zone-letter">F</div><div class="ztag tp2">Фаза 2 — добавить</div><div class="ztitle">Фрукты, овощи, DC-отсев</div><div class="zgeo">Bangkok / Pathum Thani · Оптовые рынки · 40–60 км</div><div class="zbody">Talat Thai — крупнейший оптовый рынок Таиланда (800+ т/день оборот). Отсев (5–15% объёма) формирует постоянный поток ~60k т/год. Также Central Fresh DC, Big-C Distribution Centre. Высокое содержание сахаров — быстрый субстрат для BSF.</div><div class="zprod"><strong>Якорные производители:</strong> Talat Thai Wholesale Market (Pathum Thani); Central Fresh Distribution Centre; Big-C DC; Makro regional DC (Bangkok)</div><div class="zmeta"><div><div class="zk">Объём</div><div class="zv c-green">60 000 т</div></div><div><div class="zk">т/сут</div><div class="zv">164</div></div><div><div class="zk">Capex</div><div class="zv">$7 397k</div></div><div><div class="zk">BSF мука</div><div class="zv">2 700 т</div></div></div><div><span class="zbadge bwarn">Переговоры</span></div></div>
+    </div>
+  </div>
+
+  <!-- PHASE 3 -->
+  <div class="ppanel" id="p3">
+    <div class="alert" style="background:rgba(138,93,61,.06);border-left:3px solid var(--warm);margin-bottom:20px"><div class="ai">📋</div><div><strong>Фаза 3 — +150k т/год.</strong> Требует feasibility study и более сложной логистики (зона H — 290 км). Открывает выход на 530k т/год и 24k т муки. Capex доп.: ~$18 493k.</div></div>
+    <div class="zones-grid">
+      <div class="zone-card"><div class="zone-letter">G</div><div class="ztag tp3">Фаза 3 — масштаб</div><div class="ztitle">Пищепром / мороженое / dairy</div><div class="zgeo">Pathum Thani / Ayutthaya · 70–90 км</div><div class="zbody">Концентрация крупных пищевых компаний в 70–90 км от центра. CP Foods, Nestlé Thailand, FrieslandCampina производят стабильные органические потоки с высоким белком и жиром — отличный субстрат с хорошей конверсией BSF.</div><div class="zprod"><strong>Якорные производители:</strong> CP Foods (Pathum Thani); Nestlé Thailand (Rayong + Pathum Thani); FrieslandCampina Thai (dairy waste); Dutch Mill Group; заводы мороженого Ayutthaya</div><div class="zmeta"><div><div class="zk">Объём</div><div class="zv c-amber">50 000 т</div></div><div><div class="zk">т/сут</div><div class="zv">137</div></div><div><div class="zk">Capex</div><div class="zv">$6 164k</div></div><div><div class="zk">BSF мука</div><div class="zv">2 250 т</div></div></div><div><span class="zbadge bfeas">Feasibility</span></div></div>
+      <div class="zone-card"><div class="zone-letter">H</div><div class="ztag tp3">Фаза 3 — масштаб</div><div class="ztitle">Кассава пульпа — расширение NE</div><div class="zgeo">Nakhon Ratchasima / Prachin Buri · 250–290 км</div><div class="zbody">Крупнейший потенциальный поток в радиусе. Кассава — главная crop NE-Таиланда. Крахмальные заводы производят огромные объёмы пульпы (cassava pomace) с высокой влажностью. Требует логистического решения: контейнерная перевозка или мини-завод in situ.</div><div class="zprod"><strong>Якорные производители:</strong> Thai Tapioca Starch Association (члены); Chaiyaphum Starch; Nakhon Ratchasima Tapioca группа; Prachin Buri крахмальные кластеры</div><div class="zmeta"><div><div class="zk">Объём</div><div class="zv c-amber">100 000 т</div></div><div><div class="zk">т/сут</div><div class="zv">274</div></div><div><div class="zk">Capex</div><div class="zv">$12 329k</div></div><div><div class="zk">BSF мука</div><div class="zv">4 500 т</div></div></div><div><span class="zbadge bfeas">Feasibility</span></div></div>
+    </div>
+  </div>
+
+</div>
+</section>
+
+<!-- CAPEX -->
+<section id="capex" class="section">
+<div class="container">
+  <div class="slabel">04 / Инвестиции</div>
+  <div class="stitle">Capex — сценарный анализ</div>
+  <div class="sdesc">$450k / каждые 10 т/сут обработки. Только оборудование. Строительство + земля + логистика: +40–70% сверху.</div>
+  <div class="capex-grid fu">
+    <div class="cc"><div class="cc-name">Сц. 0 — Минимум</div><div class="cc-val">$31.1M</div><div class="cc-sub">250k т/год · 685 т/сут</div><div class="cc-rows"><div class="cc-row"><span class="cc-rk">Модулей (10т)</span><span class="cc-rv">69</span></div><div class="cc-row"><span class="cc-rk">BSF мука</span><span class="cc-rv">11 250 т</span></div><div class="cc-row"><span class="cc-rk">Frass</span><span class="cc-rv">62 500 т</span></div><div class="cc-row"><span class="cc-rk">Выручка/год</span><span class="cc-rv">$29.6M</span></div><div class="cc-row"><span class="cc-rk">Payback (вал.)</span><span class="cc-rv c-amber">~1.0 г</span></div></div></div>
+    <div class="cc feat"><div class="cc-name">Сц. 1 — Цель 20k т</div><div class="cc-val c-amber">$54.9M</div><div class="cc-sub">444k т/год · 1 216 т/сут</div><div class="cc-rows"><div class="cc-row"><span class="cc-rk">Модулей (10т)</span><span class="cc-rv">122</span></div><div class="cc-row"><span class="cc-rk">BSF мука</span><span class="cc-rv">19 980 т</span></div><div class="cc-row"><span class="cc-rk">Frass</span><span class="cc-rv">111 000 т</span></div><div class="cc-row"><span class="cc-rk">Выручка/год</span><span class="cc-rv">$52.6M</span></div><div class="cc-row"><span class="cc-rk">Payback (вал.)</span><span class="cc-rv c-green">~1.0 г</span></div></div></div>
+    <div class="cc"><div class="cc-name">Сц. 2 — Полная A–H</div><div class="cc-val">$65.7M</div><div class="cc-sub">530k т/год · 1 452 т/сут</div><div class="cc-rows"><div class="cc-row"><span class="cc-rk">Модулей (10т)</span><span class="cc-rv">146</span></div><div class="cc-row"><span class="cc-rk">BSF мука</span><span class="cc-rv">23 850 т</span></div><div class="cc-row"><span class="cc-rk">Frass</span><span class="cc-rv">132 500 т</span></div><div class="cc-row"><span class="cc-rk">Выручка/год</span><span class="cc-rv">$62.8M</span></div><div class="cc-row"><span class="cc-rk">Payback (вал.)</span><span class="cc-rv c-green">~1.0 г</span></div></div></div>
+    <div class="cc"><div class="cc-name">Сц. 3 — Максимум</div><div class="cc-val">$123.3M</div><div class="cc-sub">1 000k т/год · 2 740 т/сут</div><div class="cc-rows"><div class="cc-row"><span class="cc-rk">Модулей (10т)</span><span class="cc-rv">274</span></div><div class="cc-row"><span class="cc-rk">BSF мука</span><span class="cc-rv">45 000 т</span></div><div class="cc-row"><span class="cc-rk">Frass</span><span class="cc-rv">250 000 т</span></div><div class="cc-row"><span class="cc-rk">Выручка/год</span><span class="cc-rv">$118.5M</span></div><div class="cc-row"><span class="cc-rk">Payback (вал.)</span><span class="cc-rv c-green">~1.0 г</span></div></div></div>
+  </div>
+  <p style="font-size:11px;font-family:'DM Mono',monospace;color:rgba(26,26,26,.38)">* Выручка = BSF мука ($2 300/т) + frass ($60/т). Opex не включён. С opex реалистичный payback 2.5–4 года.</p>
+</div>
+</section>
+
+<!-- BUYERS MEAL -->
+<section id="buyers-meal" class="section">
+<div class="container">
+  <div class="slabel">05 / Сбыт BSF-муки</div>
+  <div class="stitle">Покупатели BSF-муки</div>
+  <div class="sdesc">BSF-мука позиционируется как premium protein ($2 300/т) против fishmeal ($1 100–1 300/т). Включение до 7–10% в аквакорм.</div>
+  <div class="buyers fu">
+    <div class="bc"><div class="bc-rank">1</div><div class="bc-body"><div class="bc-company">CPF — Ban Bueng Aquafeed Mill</div><div class="bc-loc">Ban Bueng, Chonburi · 140 км от центра</div><div class="bc-desc">Крупнейший аквафид-завод Таиланда. ASC Feed Standard сертифицирован (первый в стране, 2025). Активно снижает fishmeal: с 35% до 7%, цель — 5%. Вертикальная интеграция от корма до экспорта. Мощность 300k+ т/год. BAP 4-Star по всей цепочке.</div><div class="bc-tags"><span class="btag t-shrimp">Shrimp vannamei</span><span class="btag t-esg">ASC certified</span><span class="btag t-bsf">Fishmeal → BSF</span><span class="btag t-esg">ESG roadmap</span></div></div><div class="bc-right"><div><div class="bdr-val c-amber">9–12k т</div><div class="bdr-lbl">BSF спрос/год</div></div><div class="bdr-dist">≤7% включение</div><div><span class="sdot dot-hot"></span><span style="font-family:'DM Mono',monospace;font-size:10px">Переговоры</span></div></div></div>
+
+    <div class="bc"><div class="bc-rank">2</div><div class="bc-body"><div class="bc-company">Thai Union Feedmill (TFM) — Mahachai</div><div class="bc-loc">Samut Sakhon (Mahachai) · 70 км — ближайший якорный покупатель</div><div class="bc-desc">Второй по размеру аквафид-игрок. 17% рынка шримп-корма. 273k т/год мощность (153k shrimp + 90k fish + 30k terrestrial). В 2025 вложили 300M бат в Industry 4.0 линии. Расположен в Mahachai — главном рыбном хабе страны. Готов к пилоту по BSF.</div><div class="bc-tags"><span class="btag t-shrimp">Shrimp · Fish feed</span><span class="btag t-bsf">Готов к тесту 2025</span><span class="btag">17% рынка</span></div></div><div class="bc-right"><div><div class="bdr-val c-amber">5–8k т</div><div class="bdr-lbl">BSF спрос/год</div></div><div class="bdr-dist">≤7% включение</div><div><span class="sdot dot-hot"></span><span style="font-family:'DM Mono',monospace;font-size:10px">Готов к тесту</span></div></div></div>
+
+    <div class="bc"><div class="bc-rank">3</div><div class="bc-body"><div class="bc-company">INTEQC Feed</div><div class="bc-loc">Samut Sakhon · 70 км</div><div class="bc-desc">Топ-3 аквафид Таиланда, 16% рынка шримп-корма. Производит hatchery и larval feed — высококачественный сегмент с высокой маржой. Имеет собственную R&D ферму прямо на территории завода. Отличный партнёр для совместной валидации BSF-протокола.</div><div class="bc-tags"><span class="btag t-shrimp">Shrimp · Hatchery</span><span class="btag t-bsf">R&D партнёр</span><span class="btag">16% рынка</span></div></div><div class="bc-right"><div><div class="bdr-val">3–5k т</div><div class="bdr-lbl">BSF спрос/год</div></div><div class="bdr-dist">≤7% включение</div><div><span class="sdot dot-mid"></span><span style="font-family:'DM Mono',monospace;font-size:10px">Feasibility</span></div></div></div>
+
+    <div class="bc"><div class="bc-rank">4</div><div class="bc-body"><div class="bc-company">Cargill Aquafeed Thailand</div><div class="bc-loc">Samut Sakhon / Chonburi · 80–140 км</div><div class="bc-desc">Глобальный лидер аквафида, 1.8M т/год worldwide. Бренды Purina, Aquacel. 20 аквафид-заводов в мире, 1 в Таиланде. Cargill InVivo — глобальная программа BSF-исследований. Решение принимается на региональном уровне с учётом глобальной политики.</div><div class="bc-tags"><span class="btag t-shrimp">Shrimp · Tilapia</span><span class="btag t-bsf">Глобальный BSF интерес</span><span class="btag">Purina / Aquacel</span></div></div><div class="bc-right"><div><div class="bdr-val">2.5–4k т</div><div class="bdr-lbl">BSF спрос/год</div></div><div class="bdr-dist">≤5% включение</div><div><span class="sdot dot-mid"></span><span style="font-family:'DM Mono',monospace;font-size:10px">Переговоры</span></div></div></div>
+
+    <div class="bc"><div class="bc-rank">5</div><div class="bc-body"><div class="bc-company">Betagro Aquaculture + Poultry</div><div class="bc-loc">Lak Si, Bangkok · 50 км</div><div class="bc-desc">4M+ т/год совокупная мощность группы, antibiotic-free флагман. Аква-сегмент растёт — тиляпия, сом, прон. Тиляпия допускает до 10% BSF в корме (подтверждено trials). ESG-программа и бренд без антибиотиков создают идеальный нарратив для BSF.</div><div class="bc-tags"><span class="btag t-tilapia">Tilapia · Catfish</span><span class="btag t-esg">Antibiotic-free</span><span class="btag t-bsf">До 10% тиляпия</span></div></div><div class="bc-right"><div><div class="bdr-val">1–2k т</div><div class="bdr-lbl">BSF спрос/год</div></div><div class="bdr-dist">≤10% тиляпия</div><div><span class="sdot dot-mid"></span><span style="font-family:'DM Mono',monospace;font-size:10px">Интерес</span></div></div></div>
+
+    <div class="bc"><div class="bc-rank">6</div><div class="bc-body"><div class="bc-company">Indie farms — тиляпия / прон / сом</div><div class="bc-loc">Nakhon Pathom, Suphan Buri, Ratchaburi, Chachoengsao · 10–150 км</div><div class="bc-desc">170 шримп-ферм Chachoengsao (15.9% нац. поголовья) + 72 Nakhon Pathom + inland tilapia (60% нац. производства ~156k т/год). Диффузный рынок, нужен региональный дистрибьютор. Ценочувствительны, но высокий потенциал объёма и лояльность при конкурентной цене.</div><div class="bc-tags"><span class="btag t-tilapia">Tilapia · Shrimp · Prawn</span><span class="btag">Нужен дистрибьютор</span></div></div><div class="bc-right"><div><div class="bdr-val">2–5k т</div><div class="bdr-lbl">BSF спрос/год</div></div><div class="bdr-dist">≤10% тиляпия</div><div><span class="sdot dot-cold"></span><span style="font-family:'DM Mono',monospace;font-size:10px">Изучение</span></div></div></div>
+  </div>
+  <div class="alert alert-ok" style="margin-top:20px"><div class="ai">✓</div><div><strong>Итого P1+P2:</strong> ~20 000–29 000 т BSF-муки/год. Цель закрыта. <strong>Первый шаг:</strong> подписать MOU с TFM (Mahachai, 70 км) на тестовую партию 200–500 т.</div></div>
+</div>
+</section>
+
+<!-- FRASS -->
+<section id="buyers-frass" class="section">
+<div class="container">
+  <div class="slabel">06 / Сбыт frass-удобрения</div>
+  <div class="stitle">Потребители frass ($40–$80/т)</div>
+  <div class="sdesc">При сценарии «Цель» производится ~111 000 т frass/год. Реалистичный спрос P1+P2 — 32–51k т. Остаток → bulk компост / региональные дистрибьюторы.</div>
+  <div class="frass-grid fu">
+    <div class="fc"><div class="fc-icon">🌾</div><div class="fc-title">Рисоводческие кооперативы</div><div class="fc-crop">Suphan Buri · Ang Thong · Sing Buri · Pathum Thani · 20–120 км</div><div class="fc-body">4 млн хозяйств выращивают рис. Программа субсидий 2024 (DoAE). Frass богат органическим углеродом — снижает вымывание азота. Подходит для T-VER (Thai carbon credit scheme). Канал через агрокооперативы и District Agricultural Extension Offices.</div><div class="fc-btm"><div><div class="fc-vol c-green">15–25k т</div><div style="font-family:'DM Mono',monospace;font-size:10px;color:rgba(26,26,26,.38)">спрос/год</div></div><div class="fc-price">$40–60/т</div></div></div>
+
+    <div class="fc"><div class="fc-icon">🎋</div><div class="fc-title">Сахарный тростник</div><div class="fc-crop">Ratchaburi · Kanchanaburi · Suphan Buri · 30–120 км</div><div class="fc-body">~500 000 га тростника в радиусе. Thai Sugar Mill — уже поставщик отходов (Зона C). Возвратная схема: берём отходы → продаём frass. EU biofuel sustainability открывает organic niche. Замыкание производственного цикла в рамках одного кластера.</div><div class="fc-btm"><div><div class="fc-vol c-amber">8–15k т</div><div style="font-family:'DM Mono',monospace;font-size:10px;color:rgba(26,26,26,.38)">спрос/год</div></div><div class="fc-price">$50–70/т</div></div></div>
+
+    <div class="fc"><div class="fc-icon">🌺</div><div class="fc-title">Теплицы / цветоводство</div><div class="fc-crop">Nakhon Pathom · Ratchaburi (Mae Klong) · 10–60 км</div><div class="fc-body">Орхидеи, хризантемы, томаты на экспорт в Японию. Заменяет дорогой импортный торф. Высокий N/P/K + органическое вещество. GlobalG.A.P. совместим. Ближайший к заводу высокомаржинальный сегмент — стартовый клиент.</div><div class="fc-btm"><div><div class="fc-vol c-teal">1–3k т</div><div style="font-family:'DM Mono',monospace;font-size:10px;color:rgba(26,26,26,.38)">спрос/год</div></div><div class="fc-price">$80–120/т</div></div></div>
+
+    <div class="fc"><div class="fc-icon">🥭</div><div class="fc-title">Органические фрукты (export)</div><div class="fc-crop">Ratchaburi · Nakhon Pathom · Samut Songkhram · 20–80 км</div><div class="fc-body">Дуриан, мангостан, виноград — Япония и ЕС. Платят premium за сертифицированную органику. Frass с BSF = «circular economy» нарратив для японских покупателей. Fruits of Siam, Thai Pride Produce — уже работают с альтернативной органикой.</div><div class="fc-btm"><div><div class="fc-vol c-teal">3–6k т</div><div style="font-family:'DM Mono',monospace;font-size:10px;color:rgba(26,26,26,.38)">спрос/год</div></div><div class="fc-price">$70–100/т</div></div></div>
+
+    <div class="fc"><div class="fc-icon">🥬</div><div class="fc-title">Кассава-зоны</div><div class="fc-crop">Nakhon Ratchasima · Prachin Buri · 200–290 км</div><div class="fc-body">Бедные NE-почвы — frass восстанавливает органику. +15–20% к урожайности по trial-данным. Канал через Thai Tapioca Starch Assoc. Синергия с Зоной H: берём кассавную пульпу → возвращаем frass обратно на поля. Замкнутый региональный цикл.</div><div class="fc-btm"><div><div class="fc-vol c-amber">5–10k т</div><div style="font-family:'DM Mono',monospace;font-size:10px;color:rgba(26,26,26,.38)">спрос/год</div></div><div class="fc-price">$40–55/т</div></div></div>
+
+    <div class="fc"><div class="fc-icon">🦐</div><div class="fc-title">Аквафермы (pond fertilizer)</div><div class="fc-crop">Chachoengsao · Nakhon Pathom · Ratchaburi · 10–150 км</div><div class="fc-body">Frass как biofertilizer для фитопланктона в прудах тиляпии. Заменяет куриный помёт без патогенов и запаха. Двойная синергия: продаём тем же фермам и BSF-муку, и frass. «One-stop shop» для inland shrimp/tilapia ферм.</div><div class="fc-btm"><div><div class="fc-vol">0.5–2k т</div><div style="font-family:'DM Mono',monospace;font-size:10px;color:rgba(26,26,26,.38)">спрос/год</div></div><div class="fc-price">$50–70/т</div></div></div>
+  </div>
+</div>
+</section>
+
+<!-- LOCATION -->
+<section id="location" class="section">
+<div class="container">
+  <div class="slabel">07 / Размещение</div>
+  <div class="stitle">Оптимальная локация завода</div>
+  <div class="sdesc">Три варианта с разными trade-off. Рекомендация зависит от приоритета — производство vs сбыт.</div>
+  <div class="loc-grid fu">
+    <div class="lc feat">
+      <div class="lc-badge" style="background:rgba(61,107,79,.1);color:var(--green)">★★★ Рекомендован — Производство</div>
+      <div class="lc-title">Nakhon Pathom</div>
+      <div class="lc-body">✓ Ядро зон A и B в 5–20 км<br>✓ 72 шримп-фермы рядом<br>✓ Центр Suphan Buri / Ratchaburi коридоров<br>✓ Промзоны для аренды площадок<br>✓ Прямой выход на Mae Klong (теплицы, frass)<br>✓ ИД-трасса M9 и M338 — логистика к Bangkok<br>⚠ 70 км до TFM (доставка муки)<br>⚠ 140 км до CPF Ban Bueng</div>
+    </div>
+    <div class="lc feat" style="border-color:var(--accent)">
+      <div class="lc-badge" style="background:rgba(200,168,75,.12);color:#7a6020">★★★ Стратегически лучший — Dual-site</div>
+      <div class="lc-title">Nakhon Pathom + Samut Sakhon</div>
+      <div class="lc-body"><strong>Site 1 (NP):</strong> производство, переработка<br><strong>Site 2 (Mahachai):</strong> финишинг, хранение, сбыт<br>✓ TFM + INTEQC в 10 мин от Site 2<br>✓ Largest seafood hub Таиланда<br>✓ Портовая логистика для экспорта муки<br>✓ Доступ к рыбной муке для blending<br>⚠ Выше capex — 2 площадки<br>⚠ Сложнее управление логистикой</div>
+    </div>
+    <div class="lc">
+      <div class="lc-badge" style="background:rgba(75,124,138,.1);color:var(--accent2)">★★ Альтернатива — Сбыт-приоритет</div>
+      <div class="lc-title">Chachoengsao</div>
+      <div class="lc-body">✓ Максимум шримп-ферм (170 — 15.9% нац.)<br>✓ Bangpakong river basin — логистика<br>✓ Food by-products восток Бангкока<br>✓ E-Industrial Estate рядом<br>⚠ Меньше BSG и сои как сырья<br>⚠ Дальше от NW кассава-коридора<br>⚠ 140 км от Nakhon Pathom — core zone A/B</div>
+    </div>
+  </div>
+</div>
+</section>
+
+<footer>
+  <div>BSF Factory <span>·</span> Thailand Site Analysis <span>·</span> 2025</div>
+  <div>R = 300 km from Nakhon Pathom <span>·</span> Confidential working document</div>
+</footer>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+<script>
+// ── MAP INIT ───────────────────────────────────────────────
+const map = L.map('map', {zoomControl:true}).setView([13.85, 100.55], 8);
+L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{
+  attribution:'© OpenStreetMap © CARTO', maxZoom:18
+}).addTo(map);
+
+// ── DATA ────────────────────────────────────────────────────
+const BSF_CENTER = [13.820, 100.044];
+
+const wasteZones = [
+  {id:'A', name:'Зона A — BSG + крахмал', lat:13.87, lng:100.07, vol:120000, phase:1, color:'#4b7c8a',
+   producers:'Singha Beverage, Thai Alcohol, Sino-Thai Starch', dist:'0–20 км'},
+  {id:'B', name:'Зона B — BSG + кассава', lat:14.47, lng:100.13, vol:60000, phase:1, color:'#4b7c8a',
+   producers:'TAPB Brewery, кассавные заводы Suphan Buri', dist:'40–80 км'},
+  {id:'C', name:'Зона C — Молочка + сахар', lat:13.53, lng:99.82, vol:40000, phase:1, color:'#4b7c8a',
+   producers:'Nongpho Dairy Coop, Thai Sugar Mill', dist:'60–110 км'},
+  {id:'D', name:'Зона D — Food by-products', lat:13.69, lng:101.08, vol:20000, phase:1, color:'#4b7c8a',
+   producers:'Пищевые заводы E-Bangkok', dist:'130–160 км'},
+  {id:'E', name:'Зона E — Соевая шелуха', lat:13.60, lng:100.60, vol:80000, phase:2, color:'#3d6b4f',
+   producers:'TVO (×4 завода), TVOP, Porn Amnuay Sup', dist:'30–50 км'},
+  {id:'F', name:'Зона F — Фрукты/овощи', lat:13.95, lng:100.68, vol:60000, phase:2, color:'#3d6b4f',
+   producers:'Talat Thai, Central Fresh DC, Big-C DC', dist:'40–60 км'},
+  {id:'G', name:'Зона G — Пищепром/dairy', lat:14.38, lng:100.57, vol:50000, phase:3, color:'#8a5d3d',
+   producers:'CP Foods, Nestlé Thailand, FrieslandCampina', dist:'70–90 км'},
+  {id:'H', name:'Зона H — Кассава NE', lat:14.97, lng:102.10, vol:100000, phase:3, color:'#8a5d3d',
+   producers:'Thai Tapioca Starch Assoc., NR Tapioca Group', dist:'250–290 км'},
+];
+
+const mealBuyers = [
+  {name:'TFM — Thai Union Feedmill', lat:13.555, lng:100.270, demand:'5–8k т/год', feed:'Shrimp+Fish', status:'Готов к тесту', color:'#1a1a1a'},
+  {name:'CPF — Ban Bueng Mill', lat:13.270, lng:101.105, demand:'9–12k т/год', feed:'Shrimp', status:'Переговоры', color:'#1a1a1a'},
+  {name:'INTEQC Feed', lat:13.560, lng:100.280, demand:'3–5k т/год', feed:'Shrimp Hatchery', status:'Feasibility', color:'#1a1a1a'},
+  {name:'Cargill Aquafeed TH', lat:13.550, lng:100.290, demand:'2.5–4k т/год', feed:'Shrimp+Tilapia', status:'Переговоры', color:'#444'},
+  {name:'Betagro Feed', lat:13.88, lng:100.57, demand:'1–2k т/год', feed:'Tilapia+Poultry', status:'Интерес', color:'#666'},
+];
+
+const frassZones = [
+  {name:'Рисоводческие кооперативы', lat:14.48, lng:100.12, vol:'15–25k т', price:'$40–60/т', color:'#3d6b4f'},
+  {name:'Сахарный тростник', lat:13.52, lng:99.84, vol:'8–15k т', price:'$50–70/т', color:'#3d6b4f'},
+  {name:'Теплицы Mae Klong', lat:13.41, lng:99.96, vol:'1–3k т', price:'$80–120/т', color:'#3d6b4f'},
+  {name:'Органические фрукты', lat:13.55, lng:99.80, vol:'3–6k т', price:'$70–100/т', color:'#3d6b4f'},
+  {name:'Кассава-зоны NE', lat:14.97, lng:102.10, vol:'5–10k т', price:'$40–55/т', color:'#3d6b4f'},
+];
+
+// ── HELPERS ─────────────────────────────────────────────────
+function makeIcon(color, size, letter) {
+  const r = size/2;
+  return L.divIcon({
+    html:`<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}"><circle cx="${r}" cy="${r}" r="${r-1}" fill="${color}" stroke="white" stroke-width="1.5"/><text x="${r}" y="${r+4}" text-anchor="middle" fill="white" font-family="Syne,sans-serif" font-size="${size*.42}px" font-weight="700">${letter}</text></svg>`,
+    className:'', iconSize:[size,size], iconAnchor:[r,r], popupAnchor:[0,-r]
+  });
+}
+
+// ── LAYERS ──────────────────────────────────────────────────
+const layerWaste = L.layerGroup();
+const layerBuyers = L.layerGroup();
+const layerFrass = L.layerGroup();
+let heatLayer = null;
+
+// BSF center
+L.marker(BSF_CENTER, {icon: makeIcon('#c8a84b', 32, '★')})
+  .bindPopup('<b>BSF Factory — центр</b><br>Nakhon Pathom<br>R = 300 км')
+  .addTo(layerWaste).addTo(layerBuyers).addTo(layerFrass);
+
+// 300km circle
+L.circle(BSF_CENTER, {radius:300000, color:'#c8a84b', weight:1.5, fillOpacity:.04, dashArray:'6 6'})
+  .addTo(layerWaste).addTo(layerBuyers).addTo(layerFrass);
+
+wasteZones.forEach(z => {
+  const size = Math.round(20 + (z.vol/120000)*22);
+  L.marker([z.lat,z.lng], {icon: makeIcon(z.color, size, z.id)})
+    .bindPopup(`<b>${z.name}</b><br><b>${(z.vol/1000).toFixed(0)}k т/год</b> · Фаза ${z.phase}<br><small>${z.producers}</small><br><small>Расст.: ${z.dist}</small>`)
+    .addTo(layerWaste);
+});
+
+mealBuyers.forEach((b,i) => {
+  L.marker([b.lat + i*0.008, b.lng], {icon: makeIcon(b.color, 20, (i+1).toString())})
+    .bindPopup(`<b>${b.name}</b><br>Спрос BSF: <b>${b.demand}</b><br>Корм: ${b.feed}<br>Статус: ${b.status}`)
+    .addTo(layerBuyers);
+});
+
+frassZones.forEach((f,i) => {
+  L.marker([f.lat + i*0.005, f.lng + i*0.005], {icon: makeIcon(f.color, 18, '♻')})
+    .bindPopup(`<b>${f.name}</b><br>Frass спрос: <b>${f.vol}</b><br>Цена: ${f.price}`)
+    .addTo(layerFrass);
+});
+
+// HEATMAP
+const heatData = wasteZones.map(z => [z.lat, z.lng, z.vol/100000]);
+heatLayer = L.heatLayer(heatData, {radius:55, blur:35, maxZoom:10,
+  gradient:{0.2:'#4b7c8a', 0.5:'#c8a84b', 0.8:'#e07b3d', 1.0:'#c8303d'}});
+
+// default — show waste
+layerWaste.addTo(map);
+
+function showLayer(type) {
+  map.eachLayer(l => { if(l !== map._layers[Object.keys(map._layers)[0]]) { try{map.removeLayer(l)}catch(e){} } });
+  // re-add tiles
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{attribution:'© OpenStreetMap © CARTO',maxZoom:18}).addTo(map);
+
+  document.querySelectorAll('.map-tab').forEach(t=>t.classList.remove('active'));
+  event.target.classList.add('active');
+
+  if(type==='waste'||type==='all') layerWaste.addTo(map);
+  if(type==='buyers'||type==='all') layerBuyers.addTo(map);
+  if(type==='frass'||type==='all') layerFrass.addTo(map);
+  if(type==='heat') { heatLayer.addTo(map); L.marker(BSF_CENTER,{icon:makeIcon('#c8a84b',32,'★')}).addTo(map); L.circle(BSF_CENTER,{radius:300000,color:'#c8a84b',weight:1.5,fillOpacity:.03,dashArray:'6 6'}).addTo(map); }
+  if(type==='all') heatLayer.addTo(map);
+}
+
+// ── PHASE TABS ───────────────────────────────────────────────
+function showPhase(id) {
+  document.querySelectorAll('.ppanel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.ptab').forEach(t=>t.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  event.target.classList.add('active');
+}
+
+// ── BARS ANIMATION ────────────────────────────────────────────
+const obs = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if(e.isIntersecting) {
+      e.target.querySelectorAll('.bfa').forEach(b => {
+        const w = b.dataset.w;
+        setTimeout(()=>{ b.style.width = w+'%'; }, 200);
+      });
+      obs.unobserve(e.target);
+    }
+  });
+}, {threshold:0.3});
+document.querySelectorAll('.bar-section').forEach(s => obs.observe(s));
+
+// ── NAV ACTIVE ────────────────────────────────────────────────
+const secs = document.querySelectorAll('section[id], div[id="map-section"]');
+const links = document.querySelectorAll('#main-nav a');
+window.addEventListener('scroll', () => {
+  let cur = '';
+  secs.forEach(s => { if(window.scrollY >= s.offsetTop - 130) cur = s.id; });
+  links.forEach(a => {
+    const isActive = a.getAttribute('href') === '#'+cur;
+    a.classList.toggle('active', isActive);
+  });
+}, {passive:true});
+</script>
+</body>
+</html>
